@@ -38,12 +38,8 @@ module Toto
       end
     end
   end
-
-  class Site
-    def initialize config
-      @config = config
-    end
-
+  
+  module ConfigHelpers
     def [] *args
       @config[*args]
     end
@@ -51,21 +47,11 @@ module Toto
     def []= key, value
       @config.set key, value
     end
-
-    def index type = :html
-      case type
-        when :html
-          {:articles => self.articles.reverse.map do |article|
-              Article.new File.new(article), @config
-          end }.merge archives
-        when :xml, :json
-          return :articles => self.articles.map do |article|
-            Article.new File.new(article), @config
-          end
-        else return {}
-      end
-    end
-
+  end
+  
+  module PageHelpers
+    include ConfigHelpers
+    
     def archives filter = ""
       entries = ! self.articles.empty??
         self.articles.select do |a|
@@ -74,9 +60,39 @@ module Toto
           Article.new File.new(article), @config
         end : []
 
-      return :archives => Archives.new(entries)
+      return Archives.new(entries)
+    end
+    
+    def title
+      self[:title]
+    end
+    
+    def articles ext = self[:ext]
+      Dir["#{Paths[:articles]}/*.#{ext}"]
+    end
+  end
+
+  class Site
+    include PageHelpers
+
+    def initialize config
+      @config = config
     end
 
+    def index type = :html
+      case type
+        when :html
+          {:articles => articles.reverse.map do |article|
+              Article.new File.new(article), @config
+          end }.merge(:archives => archives)
+        when :xml, :json
+          return :articles => articles.map do |article|
+            Article.new File.new(article), @config
+          end
+        else return {}
+      end
+    end
+    
     def article route
       Article.new(File.new("#{Paths[:articles]}/#{route.join('-')}.#{self[:ext]}"), @config).load
     end
@@ -119,30 +135,19 @@ module Toto
       return ["<font style='font-size:300%'>toto, we're not in Kansas anymore (#{code})</font>", code]
     end
 
-    def articles
-      self.class.articles self[:ext]
-    end
-
-    def self.articles ext
-      Dir["#{Paths[:articles]}/*.#{ext}"]
-    end
-
     class Context
       include Template
+      include PageHelpers
 
       def initialize ctx = {}, config = {}, path = "/"
         @config, @context, @path = config, ctx, path
-        @articles = Site.articles(@config[:ext]).reverse.map do |a|
+        @articles = articles(@config[:ext]).reverse.map do |a|
           Article.new(File.new(a), @config)
         end
 
         ctx.each do |k, v|
           meta_def(k) { ctx.instance_of?(Hash) ? v : ctx.send(k) }
         end
-      end
-
-      def title
-        @config[:title]
       end
 
       def render page, type
