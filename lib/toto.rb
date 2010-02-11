@@ -3,6 +3,7 @@ require 'time'
 require 'erb'
 require 'rack'
 require 'digest'
+require 'open-uri'
 
 require 'rdiscount'
 require 'builder'
@@ -28,8 +29,20 @@ module Toto
 
   module Template
     def to_html page, &blk
-      path = (page == :layout ? Paths[:templates] : Paths[:pages])
+      path = ([:layout, :repo].include?(page) ? Paths[:templates] : Paths[:pages])
       ERB.new(File.read("#{path}/#{page}.rhtml")).result(binding)
+    end
+
+    def markdown text
+      if (options = @config[:markdown])
+        Markdown.new(text.to_s.strip, *(options.eql?(true) ? [] : options)).to_html
+      else
+        text.strip
+      end
+    end
+
+    def method_missing m, *args, &blk
+      self.keys.include?(m) ? self[m] : super
     end
 
     def self.included obj
@@ -103,21 +116,27 @@ module Toto
 
     def go route, type = :html
       route << self./ if route.empty?
-      type, path = type.to_sym, route.join('/')
+      type, path = type =~ /html|xml|json/ ? type.to_sym : :html, route.join('/')
+      context = lambda do |data, page|
+        Context.new(data, @config, path).render(page, type)
+      end
 
       body, status = if Context.new.respond_to?(:"to_#{type}")
         if route.first =~ /\d{4}/
           case route.size
             when 1..3
-              Context.new(archives(route * '-'), @config, path).render(:archives, type)
+              context[archives(route * '-'), :archives]
             when 4
-              Context.new(article(route), @config, path).render(:article, type)
+              context[article(route), :article]
             else http 400
           end
-        elsif respond_to?(route = route.first.to_sym)
-          Context.new(send(route, type), @config, path).render(route, type)
+        elsif respond_to?(path)
+          context[send(path, type), path.to_sym]
+        elsif (repo = @config[:github][:repos].grep(/#{path}/).first) &&
+              !@config[:github][:user].empty?
+          context[Repo.new(repo, @config), :repo]
         else
-          Context.new({}, @config, path).render(route.to_sym, type)
+          context[{}, path.to_sym]
         end
       else
         http 400
@@ -166,6 +185,24 @@ module Toto
     end
   end
 
+  class Repo < Hash
+    include Template
+
+    README = "http://github.com/%s/%s/raw/master/README.%s"
+
+    def initialize name, config
+      self[:name], @config = name, config
+    end
+
+    def readme
+      markdown open(README %
+        [@config[:github][:user], self[:name], @config[:github][:ext]]).read
+    rescue Timeout::Error, OpenURI::HTTPError => e
+      "This page isn't available."
+    end
+    alias :content readme
+  end
+
   class Archives < Array
     include Template
 
@@ -191,6 +228,7 @@ module Toto
     def load
       data = if @obj.is_a? File
         meta, self[:body] = @obj.read.split(/\n\n/, 2)
+        @obj.close
         YAML.load(meta)
       elsif @obj.is_a? Hash
         @obj
@@ -216,7 +254,7 @@ module Toto
       sum = if self[:body] =~ config[:delim]
         self[:body].split(config[:delim]).first
       else
-        self[:body].match(/(.{1,#{length || config[:length]}}.*?)(\n|\Z)/m).to_s
+        self[:body].match(/(.{1,#{length || config[:length] || config[:max]}}.*?)(\n|\Z)/m).to_s
       end
       markdown(sum.length == self[:body].length ? sum : sum.strip.sub(/\.\Z/, '&hellip;'))
     end
@@ -238,19 +276,6 @@ module Toto
 
     alias :to_s to_html
 
-    def method_missing m, *args, &blk
-      self.keys.include?(m) ? self[m] : super
-    end
-
-  private
-
-    def markdown text
-      if (options = @config[:markdown])
-        Markdown.new(text.to_s.strip, *(options.eql?(true) ? [] : options)).to_html
-      else
-        text.strip
-      end
-    end
   end
 
   class Config < Hash
@@ -264,14 +289,21 @@ module Toto
       :disqus => false,                                   # disqus name
       :summary => {:max => 150, :delim => /~\n/},         # length of summary and delimiter
       :ext => 'txt',                                      # extension for articles
-      :cache => 28800                                     # cache duration (seconds)
+      :cache => 28800,                                    # cache duration (seconds)
+      :github => {:user => "", :repos => [], :ext => 'md'}# Github username and list of repos
     }
     def initialize obj
       self.update Defaults
       self.update obj
     end
 
-    alias set :[]=
+    def set key, val
+      if val.is_a? Hash
+        self[key].update val
+      else
+        self[key] = val
+      end
+    end
 
     def [] key, *args
       val = super(key)
@@ -294,7 +326,7 @@ module Toto
       return [400, {}, []] unless @request.get?
 
       path, mime = @request.path_info.split('.')
-      route = path.split('/').reject {|i| i.empty? }
+      route = (path || '/').split('/').reject {|i| i.empty? }
 
       response = Toto::Site.new(@config).go(route, *(mime ? mime : []))
 

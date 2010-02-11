@@ -79,6 +79,30 @@ context Toto do
     asserts("summary shouldn't be empty")   { topic.body }.includes_html("summary" => /.{10,}/)
   end
 
+  context "GET to a repo name" do
+    setup do
+      class Toto::Repo
+        def readme() "#{self[:name]}'s README" end
+      end
+    end
+
+    context "when the repo is in the :repos array" do
+      setup do
+        @config[:github] = {:user => "cloudhead", :repos => ['the-repo']}
+        @toto.get('/the-repo')
+      end
+      should("return the-repo's README") { topic.body }.includes("the-repo's README")
+    end
+
+    context "when the repo is not in the :repos array" do
+      setup do
+        @config[:github] = {:user => "cloudhead", :repos => []}
+        @toto.get('/the-repo')
+      end
+      should("return a 404") { topic.status }.equals 404
+    end
+  end
+
   context "creating an article" do
     setup do
       @config[:markdown] = true
@@ -144,6 +168,17 @@ context Toto do
         should("create a valid summary") { topic.summary.size }.within 75..80
       end
     end
+  end
+
+  context "using Config#set with a hash" do
+    setup do
+      conf = Toto::Config.new({})
+      conf.set(:summary, {:delim => /%/})
+      conf
+    end
+
+    should("set summary[:delim] to /%/") { topic[:summary][:delim].source }.equals "%"
+    should("leave the :max intact") { topic[:summary][:max] }.equals 150
   end
 end
 
