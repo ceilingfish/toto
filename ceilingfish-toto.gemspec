@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{ceilingfish-toto}
-  s.version = "0.3.2"
+  s.version = "0.3.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["cloudhead", "ceilingfish"]
@@ -24,6 +24,8 @@ Gem::Specification.new do |s|
      "Rakefile",
      "VERSION",
      "ceilingfish-toto.gemspec",
+     "lib/ceilingfish/ext/ext.rb",
+     "lib/ceilingfish/toto.rb",
      "test/articles/1900-05-17-the-wonderful-wizard-of-oz.txt",
      "test/articles/2001-01-01-two-thousand-and-one.txt",
      "test/articles/2009-04-01-tilt-factor.txt",
