@@ -12,7 +12,7 @@ $:.unshift File.dirname(__FILE__)
 
 require 'ext/ext'
 
-module Toto
+module Ceilingfish::Toto
   Paths = {
     :templates => "templates",
     :pages => "templates/pages",
