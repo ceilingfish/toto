@@ -125,7 +125,7 @@ module Toto
         if route.first =~ /\d{4}/
           case route.size
             when 1..3
-              context[archives(route * '-'), :archives]
+              context[{:archives => archives(route * '-')}, :archives]
             when 4
               context[article(route), :article]
             else http 400
