@@ -4,12 +4,12 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "toto"
+    gem.name = "ceilingfish-toto"
     gem.summary = %Q{the tiniest blog-engine in Oz}
     gem.description = %Q{the tiniest blog-engine in Oz.}
-    gem.email = "self@cloudhead.net"
-    gem.homepage = "http://github.com/cloudhead/toto"
-    gem.authors = ["cloudhead"]
+    gem.email = "ceilingfish@gmail.com"
+    gem.homepage = "http://github.com/ceilingfish/toto"
+    gem.authors = ["cloudhead", "ceilingfish"]
     gem.add_development_dependency "riot"
     gem.add_dependency "builder"
     gem.add_dependency "rack"
