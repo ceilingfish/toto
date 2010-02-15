@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["cloudhead", "ceilingfish"]
-  s.date = %q{2010-02-13}
+  s.date = %q{2010-02-15}
   s.description = %q{the tiniest blog-engine in Oz.}
   s.email = %q{ceilingfish@gmail.com}
   s.extra_rdoc_files = [
@@ -24,6 +24,8 @@ Gem::Specification.new do |s|
      "Rakefile",
      "VERSION",
      "ceilingfish-toto.gemspec",
+     "lib/ext/ext.rb",
+     "lib/toto.rb",
      "test/articles/1900-05-17-the-wonderful-wizard-of-oz.txt",
      "test/articles/2001-01-01-two-thousand-and-one.txt",
      "test/articles/2009-04-01-tilt-factor.txt",
