@@ -83,6 +83,15 @@ module Toto
     def articles ext = self[:ext]
       Dir["#{Paths[:articles]}/*.#{ext}"]
     end
+    
+    def root
+      self[:root]
+    end
+    
+    def import(file)
+        file = "#{Paths[:templates]}/#{file}" unless file =~ /^#{Paths[:templates]}/
+        ERB.new(File.read(file)).result(binding)
+    end
   end
 
   class Site
