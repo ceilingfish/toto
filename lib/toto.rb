@@ -122,6 +122,10 @@ module Toto
     def /
       self[:root]
     end
+    
+    def is_root?(path)
+      path == '/' || path == self[:root]
+    end
 
     def go route, type = :html
       route << self./ if route.empty?
@@ -139,7 +143,7 @@ module Toto
               context[article(route), :article]
             else http 400
           end
-        elsif respond_to?(path)
+        elsif is_root?(path)
           context[send(path, type), path.to_sym]
         elsif (repo = @config[:github][:repos].grep(/#{path}/).first) &&
               !@config[:github][:user].empty?

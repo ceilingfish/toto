@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{ceilingfish-toto}
-  s.version = "0.3.8"
+  s.version = "0.3.9"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["cloudhead", "ceilingfish"]
-  s.date = %q{2010-02-15}
+  s.date = %q{2010-02-16}
   s.description = %q{the tiniest blog-engine in Oz.}
   s.email = %q{ceilingfish@gmail.com}
   s.extra_rdoc_files = [
