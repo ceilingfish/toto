@@ -68,9 +68,7 @@ module Toto
     def archives filter = ""
       entries = ! self.articles.empty??
         self.articles.select do |a|
-          filter !~ /^\d{4}/ || File.basename(a) =~ /^#{filter}/
-        end.reverse.map do |article|
-          Article.new File.new(article), @config
+          filter !~ /^\d{4}/ || a.path =~ /^\/#{filter}/
         end : []
 
       return Archives.new(entries)
@@ -81,7 +79,9 @@ module Toto
     end
     
     def articles ext = self[:ext]
-      Dir["#{Paths[:articles]}/*.#{ext}"]
+      Dir["#{Paths[:articles]}/*.#{ext}"].reverse.map do |article|
+          Article.new File.new(article), @config
+      end
     end
     
     def root
@@ -104,19 +104,15 @@ module Toto
     def index type = :html
       case type
         when :html
-          {:articles => articles.reverse.map do |article|
-              Article.new File.new(article), @config
-          end }.merge(:archives => archives)
+          {:articles => articles, :archives => archives }
         when :xml, :json
-          return :articles => articles.map do |article|
-            Article.new File.new(article), @config
-          end
+          return :articles => articles
         else return {}
       end
     end
     
     def article route
-      Article.new(File.new("#{Paths[:articles]}/#{route.join('-')}.#{self[:ext]}"), @config).load
+      Article.new(File.new("#{Paths[:articles]}/#{route}.#{self[:ext]}"), @config).load
     end
 
     def /
@@ -124,7 +120,7 @@ module Toto
     end
     
     def is_root?(path)
-      path == '/' || path == self[:root]
+      path == '/'
     end
 
     def go route, type = :html
@@ -138,13 +134,14 @@ module Toto
         if route.first =~ /\d{4}/
           case route.size
             when 1..3
-              context[{:archives => archives(route * '-')}, :archives]
+              route.pop if route.last == 'archives'
+              context[{:archives => archives(route * '/')}, :archives]
             when 4
-              context[article(route), :article]
+              context[article(route.last), :article]
             else http 400
           end
         elsif is_root?(path)
-          context[send(path, type), path.to_sym]
+          context[send(@config[:root], type), path.to_sym]
         elsif (repo = @config[:github][:repos].grep(/#{path}/).first) &&
               !@config[:github][:user].empty?
           context[Repo.new(repo, @config), :repo]
@@ -173,9 +170,7 @@ module Toto
 
       def initialize ctx = {}, config = {}, path = "/"
         @config, @context, @path = config, ctx, path
-        @articles = articles(@config[:ext]).reverse.map do |a|
-          Article.new(File.new(a), @config)
-        end
+        @articles = articles
 
         ctx.each do |k, v|
           meta_def(k) { ctx.instance_of?(Hash) ? v : ctx.send(k) }
