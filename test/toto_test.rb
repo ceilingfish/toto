@@ -12,36 +12,51 @@ context Toto do
     Toto::Paths[:templates] = "test/templates"
   end
 
-  # context "GET /" do
-  #   setup { @toto.get('/') }
-  # 
-  #   asserts("returns a 200")                { topic.status }.equals 200
-  #   asserts("body is not empty")            { not topic.body.empty? }
-  #   asserts("content type is set properly") { topic.content_type }.equals "text/html"
-  #   should("include a couple of article")   { topic.body }.includes_elements("#articles li", 3)
-  #   should("include an archive")            { topic.body }.includes_elements("#archives li", 2)
-  # 
-  #   context "with no articles" do
-  #     setup { Rack::MockRequest.new(Toto::Server.new(@config.merge(:ext => 'oxo'))).get('/') }
-  # 
-  #     asserts("body is not empty")          { not topic.body.empty? }
-  #     asserts("returns a 200")              { topic.status }.equals 200
-  #   end
-  # end
-  # 
-  # context "GET /about" do
-  #   setup { @toto.get('/about') }
-  #   asserts("returns a 200")                { topic.status }.equals 200
-  #   asserts("body is not empty")            { not topic.body.empty? }
-  #   should("have access to @articles")      { topic.body }.includes_html("#count" => /5/)
-  # end
-  # 
-  # context "GET a single article" do
-  #   setup { @toto.get("/1900/05/17/the-wonderful-wizard-of-oz") }
-  #   asserts("returns a 200")                { topic.status }.equals 200
-  #   asserts("content type is set properly") { topic.content_type }.equals "text/html"
-  #   should("contain the article")           { topic.body }.includes_html("p" => /<em>Once upon a time<\/em>/)
-  # end
+  context "GET /" do
+    setup { @toto.get('/') }
+
+    asserts("returns a 200")                { topic.status }.equals 200
+    asserts("body is not empty")            { not topic.body.empty? }
+    asserts("content type is set properly") { topic.content_type }.equals "text/html"
+    should("include a couple of article")   { topic.body }.includes_elements("#articles li", 3)
+    should("include an archive")            { topic.body }.includes_elements("#archives li", 2)
+
+    context "with no articles" do
+      setup { Rack::MockRequest.new(Toto::Server.new(@config.merge(:ext => 'oxo'))).get('/') }
+
+      asserts("body is not empty")          { not topic.body.empty? }
+      asserts("returns a 200")              { topic.status }.equals 200
+    end
+
+    context "with a user-defined to_html" do
+      setup do
+        @config[:to_html] = lambda do |path, page, binding|
+          ERB.new(File.read("#{path}/#{page}.rhtml")).result(binding)
+        end
+        @toto.get('/')
+      end
+
+      asserts("returns a 200")                { topic.status }.equals 200
+      asserts("body is not empty")            { not topic.body.empty? }
+      asserts("content type is set properly") { topic.content_type }.equals "text/html"
+      should("include a couple of article")   { topic.body }.includes_elements("#articles li", 3)
+      should("include an archive")            { topic.body }.includes_elements("#archives li", 2)
+    end
+  end
+
+  context "GET /about" do
+    setup { @toto.get('/about') }
+    asserts("returns a 200")                { topic.status }.equals 200
+    asserts("body is not empty")            { not topic.body.empty? }
+    should("have access to @articles")      { topic.body }.includes_html("#count" => /5/)
+  end
+
+  context "GET a single article" do
+    setup { @toto.get("/1900/05/17/the-wonderful-wizard-of-oz") }
+    asserts("returns a 200")                { topic.status }.equals 200
+    asserts("content type is set properly") { topic.content_type }.equals "text/html"
+    should("contain the article")           { topic.body }.includes_html("p" => /<em>Once upon a time<\/em>/)
+  end
 
   context "GET to the archive" do
     context "through a year" do
@@ -179,6 +194,16 @@ context Toto do
 
     should("set summary[:delim] to /%/") { topic[:summary][:delim].source }.equals "%"
     should("leave the :max intact") { topic[:summary][:max] }.equals 150
+  end
+
+  context "using Config#set with a block" do
+    setup do
+      conf = Toto::Config.new({})
+      conf.set(:to_html) {|path, p, _| path + p }
+      conf
+    end
+
+    should("set the value to a proc") { topic[:to_html] }.respond_to :call
   end
 end
 

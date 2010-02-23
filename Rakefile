@@ -10,7 +10,6 @@ begin
     gem.email = "ceilingfish@gmail.com"
     gem.homepage = "http://github.com/ceilingfish/toto"
     gem.authors = ["cloudhead", "ceilingfish"]
-    # gem.files = FileList["{bin,lib}/**/*"]
     gem.add_development_dependency "riot"
     gem.add_dependency "builder"
     gem.add_dependency "rack"

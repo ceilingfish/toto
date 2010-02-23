@@ -28,9 +28,9 @@ module Toto
   end
 
   module Template
-    def to_html page, &blk
+    def to_html page, config, &blk
       path = ([:layout, :repo].include?(page) ? Paths[:templates] : Paths[:pages])
-      ERB.new(File.read("#{path}/#{page}.rhtml")).result(binding)
+      config[:to_html].call(path, page, binding)
     end
 
     def markdown text
@@ -71,7 +71,7 @@ module Toto
           filter !~ /^\d{4}/ || a.path =~ /^\/#{filter}/
         end : []
 
-      return Archives.new(entries)
+      return Archives.new(entries, @config)
     end
     
     def title
@@ -80,7 +80,7 @@ module Toto
     
     def articles ext = self[:ext]
       Dir["#{Paths[:articles]}/*.#{ext}"].reverse.map do |article|
-          Article.new File.new(article), @config
+          Article.new article, @config
       end
     end
     
@@ -112,7 +112,7 @@ module Toto
     end
     
     def article route
-      Article.new(File.new("#{Paths[:articles]}/#{route}.#{self[:ext]}"), @config).load
+      Article.new("#{Paths[:articles]}/#{route}.#{self[:ext]}", @config).load
     end
 
     def /
@@ -178,7 +178,7 @@ module Toto
       end
 
       def render page, type
-        type == :html ? to_html(:layout, &Proc.new { to_html page }) : send(:"to_#{type}", :feed)
+        type == :html ? to_html(:layout, @config, &Proc.new { to_html page, @config }) : send(:"to_#{type}", :feed)
       end
 
       def to_xml page
@@ -214,12 +214,17 @@ module Toto
   class Archives < Array
     include Template
 
-    def initialize articles
+    def initialize articles, config
       self.replace articles
+      @config = config
+    end
+
+    def [] a
+      a.is_a?(Range) ? self.class.new(self.slice(a) || [], @config) : super
     end
 
     def to_html
-      super(:archives)
+      super(:archives, @config)
     end
     alias :to_s to_html
     alias :archive archives
@@ -234,9 +239,8 @@ module Toto
     end
 
     def load
-      data = if @obj.is_a? File
-        meta, self[:body] = @obj.read.split(/\n\n/, 2)
-        @obj.close
+      data = if @obj.is_a? String
+        meta, self[:body] = File.read(@obj).split(/\n\n/, 2)
         YAML.load(meta)
       elsif @obj.is_a? Hash
         @obj
@@ -277,10 +281,10 @@ module Toto
     end
 
     def title()   self[:title] || "an article"               end
-    def date()    @config[:date, self[:date]]                end
+    def date()    @config[:date].call(self[:date])           end
     def path()    self[:date].strftime("/%Y/%m/%d/#{slug}/") end
     def author()  self[:author] || @config[:author]          end
-    def to_html() self.load; super(:article)                 end
+    def to_html() self.load; super(:article, @config)        end
 
     alias :to_s to_html
 
@@ -288,34 +292,32 @@ module Toto
 
   class Config < Hash
     Defaults = {
-      :author => ENV['USER'],                             # blog author
-      :title => Dir.pwd.split('/').last,                  # site title
-      :root => "index",                                   # site index
+      :author => ENV['USER'],                               # blog author
+      :title => Dir.pwd.split('/').last,                    # site title
+      :root => "index",                                     # site index
       :url => "http://127.0.0.1",
-      :date => lambda {|now| now.strftime("%d/%m/%Y") },  # date function
-      :markdown => :smart,                                # use markdown
-      :disqus => false,                                   # disqus name
-      :summary => {:max => 150, :delim => /~\n/},         # length of summary and delimiter
-      :ext => 'txt',                                      # extension for articles
-      :cache => 28800,                                    # cache duration (seconds)
-      :github => {:user => "", :repos => [], :ext => 'md'}# Github username and list of repos
+      :date => lambda {|now| now.strftime("%d/%m/%Y") },    # date function
+      :markdown => :smart,                                  # use markdown
+      :disqus => false,                                     # disqus name
+      :summary => {:max => 150, :delim => /~\n/},           # length of summary and delimiter
+      :ext => 'txt',                                        # extension for articles
+      :cache => 28800,                                      # cache duration (seconds)
+      :github => {:user => "", :repos => [], :ext => 'md'}, # Github username and list of repos
+      :to_html => lambda {|path, page, ctx|                 # returns an html, from a path & context
+        ERB.new(File.read("#{path}/#{page}.rhtml")).result(ctx)
+      }
     }
     def initialize obj
       self.update Defaults
       self.update obj
     end
 
-    def set key, val
+    def set key, val = nil, &blk
       if val.is_a? Hash
         self[key].update val
       else
-        self[key] = val
+        self[key] = block_given?? blk : val
       end
-    end
-
-    def [] key, *args
-      val = super(key)
-      val.respond_to?(:call) ? val.call(*args) : val
     end
   end
 

@@ -6,7 +6,7 @@ the tiniest blogging engine in Oz!
 introduction
 ------------
 
-toto is a git-powered, minimalist blog engine for the hackers of Oz. The engine weights around ~300 sloc at its worse.
+toto is a git-powered, minimalist blog engine for the hackers of Oz. The engine weighs around ~300 sloc at its worse.
 There is no toto client, at least for now; everything goes through git.
 
 blog in 10 seconds
@@ -28,6 +28,18 @@ Toto was designed to be used with a reverse-proxy cache, such as [Varnish](http:
 This makes it an ideal candidate for [heroku](http://heroku.com).
 
 Oh, and everything that can be done with git, _is_.
+
+ceilingfish extensions
+----------------------
+
+The ceilingfish fork of toto attempts to add a set of useful helpers to the core toto engine. Specifically it provides the following functions to all pages:
+
+- an `import` function to allow layouts to be pared down into more manageable chunks
+- an `archives` function to allow access to a historical list of articles
+- a `title` function to return the title of the current page
+- a `root` function to get a link to the base url
+
+Most of these were in there in some form or other, they've just been moved around to ensure they're available for every page.
 
 how it works
 ------------
@@ -142,6 +154,9 @@ you could add `set :author, 'John Galt'` inside the `Toto::Server.new` block. He
     set :summary,   :max => 150, :delim => /~\n/              # length of article summary and delimiter 
     set :ext,       'txt'                                     # file extension for articles 
     set :cache,     28800                                     # cache site for 8 hours
+    set :to_html do |path, page, ctx|                         # returns an html, from a path & context
+        ERB.new(File.read("#{path}/#{page}.rhtml")).result(ctx)
+    end
 
 thanks
 ------
