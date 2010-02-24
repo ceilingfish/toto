@@ -66,7 +66,7 @@ module Toto
     include ConfigHelpers
     
     def archives filter = ""
-      entries = ! self.articles.empty??
+      entries = ! self.articles.reverse.empty??
         self.articles.select do |a|
           filter !~ /^\d{4}/ || a.path =~ /^\/#{filter}/
         end : []
