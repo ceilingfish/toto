@@ -67,7 +67,7 @@ module Toto
     
     def archives filter = ""
       entries = ! self.articles.empty??
-        self.articles.reverse.select do |a|
+        self.articles.select do |a|
           filter !~ /^\d{4}/ || a.path =~ /^\/#{filter}/
         end : []
 
@@ -79,7 +79,7 @@ module Toto
     end
     
     def articles ext = self[:ext]
-      Dir["#{Paths[:articles]}/*.#{ext}"].reverse.map do |article|
+      Dir["#{Paths[:articles]}/*.#{ext}"].map do |article|
           Article.new article, @config
       end
     end
