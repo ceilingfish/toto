@@ -241,7 +241,7 @@ module Toto
     def load
       data = if @obj.is_a? String
         meta, self[:body] = File.read(@obj).split(/\n\n/, 2)
-        YAML.load(meta)
+        YAML.load(meta).merge(:title => File.basename(@obj).chomp('.txt').humanize)
       elsif @obj.is_a? Hash
         @obj
       end.inject({}) {|h, (k,v)| h.merge(k.to_sym => v) }
